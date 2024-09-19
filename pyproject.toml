@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "jina-clip-modal"
+version = "0.1.0"
+description = ""
+authors = ["poipiii <nanosonico1@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+modal = "^0.64.125"
+transformers = "^4.44.2"
+einops = "^0.8.0"
+timm = "^1.0.9"
+pillow = "^10.4.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
