@@ -1,6 +1,5 @@
 import modal
 
-app = modal.App("jina-ai-clip-v1")
 
 
 docker_image = modal.Image.debian_slim(python_version="3.11").run_commands(
@@ -25,10 +24,14 @@ with docker_image.imports():
     import requests
     from typing import Dict
     from io import BytesIO
+    import os
+    from fastapi import Depends, HTTPException, status, Request
+    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 
+auth_scheme = HTTPBearer()
 
-app = modal.App(image=docker_image)
+app = modal.App(name="jina-ai-clip-v1",image=docker_image)
 
 @app.cls(gpu="T4")
 class JinaClipV1:
@@ -58,10 +61,17 @@ def download_img(image_url:str):
     return image
 
 
-@app.function(image=docker_image)
+@app.function(image=docker_image,secrets=[modal.Secret.from_name("AUTH_TOKEN")])
 @modal.web_endpoint(method="POST")
-def embed(payload:dict) :
-    print(payload)
-    image = download_img.remote(payload["image_url"])
-    text_embeddings, image_embeddings = JinaClipV1().predict.remote(payload["text"], image)
+def embed(request:dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)) :
+    print(token.credentials)
+    print(os.environ["AUTH_TOKEN"])
+    if token.credentials.strip() != os.environ["AUTH_TOKEN"].strip():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect bearer token",
+            headers={"WWW-Authenticate": "Bearer"},)
+    
+    image = download_img.remote(request["image_url"])
+    text_embeddings, image_embeddings = JinaClipV1().predict.remote(request["text"], image)
     return {"text_embeddings": text_embeddings, "image_embeddings": image_embeddings}
